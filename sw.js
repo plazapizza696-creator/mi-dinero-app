@@ -1,4 +1,4 @@
-const CACHE = 'midinero-v11-standalone';
+const CACHE = 'midinero-v12-standalone';
 const BASE = '/mi-dinero-app';
 const ARCHIVOS = ['/', '/index.html', '/app.js', '/reembolsos.js', '/wallets.js', '/prestamos.js', '/actualizaciones.js', '/version.json', '/sync.js', '/styles.css', '/manifest.json', '/icon-192.png', '/icon-512.png', '/icon.svg'].map(f => BASE + f);
 ARCHIVOS.push(...['bbva', 'banamex', 'nu', 'spin', 'hsbc', 'plata', 'didi'].map(banco => `${BASE}/assets/banks/${banco}.svg`));
@@ -69,7 +69,16 @@ async function dbGetAll(store) {
 
 async function readState() {
   const row = await dbGet('estado', 'main');
-  return row ? { rev: row.rev, estado: row.estado, ts: row.ts } : { rev: 0, estado: null };
+  if (row) return { rev: row.rev, estado: row.estado, ts: row.ts };
+  try {
+    const r = await fetch(BASE + '/_import.json', { cache: 'no-store' });
+    if (r.ok) {
+      const estado = await r.json();
+      await dbPut('estado', 'main', { rev: 1, estado, ts: Date.now() });
+      return { rev: 1, estado, ts: Date.now() };
+    }
+  } catch (e) {}
+  return { rev: 0, estado: null };
 }
 
 const coinIds = { BTC: 'bitcoin', ETH: 'ethereum', SOL: 'solana', XRP: 'ripple', USDT: 'tether', USDC: 'usd-coin', BNB: 'binancecoin', ADA: 'cardano', DOGE: 'dogecoin', DOT: 'polkadot', LTC: 'litecoin', AVAX: 'avalanche-2', LINK: 'chainlink', TRX: 'tron', SHIB: 'shiba-inu', MATIC: 'matic-network', POL: 'polygon-ecosystem-token', TON: 'the-open-network', XLM: 'stellar', PEPE: 'pepe' };
