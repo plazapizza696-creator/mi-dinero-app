@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="es-MX" data-app-version="2026-10-20-fondo-2">
+<head>
+<script>window.MIDINERO_CLOUD = true;</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0047cc">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Mi Dinero">
+<title>Mi Dinero</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="styles.css">
+<script>
+  (function () {
+    if (!/^https?:$/.test(location.protocol)) return;
+    function enviar(msg) { try { navigator.sendBeacon('/api/error', String(msg).slice(0, 1500) + ' @ ' + navigator.userAgent); } catch (e) {} }
+    window.addEventListener('error', function (e) { enviar((e.message || 'error') + ' en ' + (e.filename || '').split('/').pop() + ':' + e.lineno + ':' + e.colno); });
+    window.addEventListener('unhandledrejection', function (e) { enviar('promesa: ' + (e.reason && (e.reason.stack || e.reason.message) || e.reason)); });
+  })();
+</script>
+</head>
+<body>
+<div class="layout">
+  <aside class="side" id="tabs">
+    <div class="brand">
+      <span class="logo">$</span>
+      <div>
+        <strong>Mi Dinero</strong>
+        <small id="perfilNombre">Control financiero</small>
+      </div>
+    </div>
+
+    <div class="nav-grupo fin">Mi dinero</div>
+    <button data-tab="inicio" data-sec="fin"><span class="ic">🏠</span>Inicio</button>
+    <button data-tab="presupuesto" data-sec="fin"><span class="ic">📊</span>Balance mensual</button>
+    <button data-tab="inversiones" data-sec="fin"><span class="ic">📈</span>Portafolio</button>
+    <button data-tab="memecoin" data-sec="fin" class="nav-sub"><span class="ic">◈</span>Meme Coin</button>
+    <button data-tab="cuentas" data-sec="fin"><span class="ic">🏦</span>Mis cuentas</button>
+    <button data-tab="prestamos" data-sec="fin"><span class="ic">🤝</span>Préstamos</button>
+    <button data-tab="prestamosFondo" data-sec="fin" class="nav-sub"><span class="ic">↻</span>Fondo para reinvertir</button>
+    <button data-tab="tarjetas" data-sec="fin"><span class="ic">💳</span>Tarjetas</button>
+    <button data-tab="movimientos" data-sec="fin"><span class="ic">📋</span>Actividad</button>
+
+    <div class="nav-grupo fin">Otras personas</div>
+    <button data-tab="cuentasTerceros" data-sec="fin"><span class="ic">👥</span>Sus cuentas</button>
+
+    <div class="nav-grupo sat">SAT · Impuestos</div>
+    <button data-tab="resumen" data-sec="sat" class="sec2"><span class="ic">🏛️</span>Resumen fiscal</button>
+    <button data-tab="asesor" data-sec="sat" class="sec2"><span class="ic">💡</span>Asesor fiscal</button>
+    <button data-tab="pagos" data-sec="sat" class="sec2"><span class="ic">🧾</span>Pagos al SAT</button>
+
+    <div class="nav-sp"></div>
+    <button type="button" id="syncEstado" class="sync off" title="Conectar y sincronizar">Solo en este dispositivo</button>
+    <button data-tab="instalar" data-sec="fin"><span class="ic">▯</span>Usar en iPhone</button>
+    <button data-tab="config"><span class="ic">⚙️</span>Configuración</button>
+  </aside>
+  <div class="velo" id="velo"></div>
+
+  <div class="contenido">
+    <header class="top">
+      <button class="menu-btn" id="menuBtn" aria-label="Menú">☰</button>
+      <div>
+        <small id="vistaSeccion"></small>
+        <h1 id="vistaTitulo">Inicio</h1>
+      </div>
+      <div class="periodo">
+        <button class="link flecha" data-mes="-1" aria-label="Mes anterior">‹</button>
+        <select id="selMes" aria-label="Mes"></select>
+        <select id="selAnio" aria-label="Año"></select>
+        <button class="link flecha" data-mes="1" aria-label="Mes siguiente">›</button>
+      </div>
+    </header>
+    <main id="app"></main>
+    <footer class="pie">
+      Tus datos se guardan en tu dispositivo. Puedes apagar tu laptop. Las cotizaciones se consultan en servicios públicos.
+      Los cálculos fiscales son informativos (LISR art. 113-E, LIVA); valida con tu contador antes de presentar.
+    </footer>
+  </div>
+</div>
+
+<nav class="bottom" id="bottomNav">
+  <button data-tab="inicio"><span>🏠</span>Inicio</button>
+  <button data-tab="presupuesto"><span>📊</span>Balance</button>
+  <button class="fab" data-act="rapido" data-dir="out" aria-label="Agregar gasto">+</button>
+  <button data-tab="inversiones"><span>📈</span>Portafolio</button>
+  <button data-tab="menu"><span>☰</span>Más</button>
+</nav>
+
+<div id="dropOverlay"><div><div class="drop-ic">⬇</div>Suelta aquí tus estados de cuenta</div></div>
+<div id="toasts"></div>
+<input type="file" id="archivoOculto" multiple hidden accept=".csv,.txt,.tsv,.json,.pdf,.xlsx,.xls">
+
+<dialog id="dlgPin" class="rapido" aria-labelledby="pinTitulo">
+  <form method="dialog" id="formPin">
+    <h3 id="pinTitulo">Conecta con Mi Dinero</h3>
+    <p id="pinMensaje" class="muted">Introduce el PIN que aparece al iniciar Mi Dinero en tu computadora.</p>
+    <div class="form-row">
+      <label>PIN de acceso
+        <input id="syncPin" name="pin" type="password" inputmode="numeric" autocomplete="off" required autofocus aria-describedby="pinMensaje">
+      </label>
+    </div>
+    <menu>
+      <button value="cancelar" formnovalidate>Ahora no</button>
+      <button value="conectar" class="primary">Conectar</button>
+    </menu>
+  </form>
+</dialog>
+
+<dialog id="dlgRapido" class="rapido">
+  <form method="dialog" id="formRapido">
+    <div class="seg">
+      <label><input type="radio" name="dir" value="out" checked><span>➖ Gasto</span></label>
+      <label><input type="radio" name="dir" value="in"><span>➕ Ingreso</span></label>
+    </div>
+    <input name="monto" class="monto-grande" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="$0" required>
+    <div class="montos-rapidos" id="rapidoMontos"></div>
+    <input name="concepto" placeholder="Nota (opcional)" autocomplete="off">
+    <div class="cats-grid" id="rapidoCats"></div>
+    <input type="hidden" name="categoria">
+    <div class="grid2">
+      <label>Cuenta / tarjeta <select name="cuenta"></select></label>
+      <label>Fecha <input type="date" name="fecha" required></label>
+    </div>
+    <label class="chk"><input type="checkbox" name="negocio"> <span id="lblNegocio">Es gasto de mi negocio (SAT)</span></label>
+    <label class="chk" id="lblCfdi"><input type="checkbox" name="cfdi"> Tengo factura (CFDI)</label>
+    <menu>
+      <button value="cancel" formnovalidate>Cancelar</button>
+      <button value="ok" class="primary">Guardar</button>
+    </menu>
+  </form>
+</dialog>
+
+<dialog id="dlgMov">
+  <form method="dialog" id="formMov">
+    <h3 id="dlgMovTitulo">Movimiento</h3>
+    <div class="grid2">
+      <label>Fecha <input type="date" name="fecha" required></label>
+      <label>Tipo
+        <select name="dir"><option value="in">Entrada (depósito / abono)</option><option value="out">Salida (cargo / pago)</option></select>
+      </label>
+      <label class="span2">Concepto <input name="concepto" required></label>
+      <label>Monto en el banco <input name="monto" type="number" step="0.01" min="0" required></label>
+      <label>Clasificación <select name="clase"></select></label>
+      <label>Tasa de IVA
+        <select name="ivaTasa"><option value="0.16">16%</option><option value="0.08">8% (frontera)</option><option value="0">0% / exento</option></select>
+      </label>
+      <label>Forma de pago
+        <select name="forma"><option value="transferencia">Transferencia</option><option value="tarjeta">Tarjeta</option><option value="efectivo">Efectivo</option><option value="cheque">Cheque</option></select>
+      </label>
+      <label class="chk"><input type="checkbox" name="cfdi"> Tiene factura (CFDI)</label>
+      <label class="chk"><input type="checkbox" name="clientePM"> Ingreso de persona moral (me retuvo ISR 1.25% e IVA)</label>
+      <label>Subtotal facturado (opcional) <input name="base" type="number" step="0.01" min="0" placeholder="Se calcula solo"></label>
+      <label>Cuenta / tarjeta <input name="cuenta" list="listaCuentas" placeholder="Ej. BBVA débito"></label>
+      <label>Categoría <input name="categoria" list="listaCategorias" placeholder="Ej. Comida"></label>
+      <label class="span2">Notas <input name="notas"></label>
+    </div>
+    <menu>
+      <button value="cancel" formnovalidate>Cancelar</button>
+      <button value="ok" class="primary">Guardar</button>
+    </menu>
+  </form>
+</dialog>
+
+<datalist id="listaCuentas"></datalist>
+<datalist id="listaCategorias"></datalist>
+
+<script src="reembolsos.js"></script>
+<script src="wallets.js"></script>
+<script src="prestamos.js"></script>
+<script src="app.js"></script>
+<script src="sync.js"></script>
+<script src="actualizaciones.js"></script>
+</body>
+</html>
