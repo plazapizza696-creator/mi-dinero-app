@@ -10,6 +10,7 @@ window.Sync = (() => {
   let trayendo = false, traerPendiente = false, escuchando = false;
 
   const nube = !!window.MIDINERO_CLOUD;
+  const basePath = location.pathname.replace(/\/[^/]*$/, '');
   const pin = () => localStorage.getItem(K_PIN) || '';
   const igual = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   const sinVista = s => { const { vista, ...resto } = s; return resto; };
@@ -50,7 +51,7 @@ window.Sync = (() => {
       if (!p) throw new Error('Falta el PIN');
       localStorage.setItem(K_PIN, p);
     }
-    const r = await fetch(ruta, {
+    const r = await fetch(basePath + ruta, {
       method: metodo, cache: 'no-store',
       headers: { ...(nube ? {} : { 'X-PIN': pin() }), 'X-MiDinero-Client': '1', 'Content-Type': 'application/json' },
       body: cuerpo ? JSON.stringify(cuerpo) : undefined,

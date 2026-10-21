@@ -7,7 +7,7 @@
     if (consultando || document.visibilityState !== 'visible') return;
     consultando = true;
     try {
-      const r = await fetch('/version.json', { cache: 'no-store' });
+      const r = await fetch(location.pathname.replace(/\/[^/]*$/, '') + '/version.json', { cache: 'no-store' });
       if (!r.ok || r.redirected) return;
       const nueva = await r.json();
       if (!nueva.version || nueva.version === version || document.getElementById('avisoVersion')) return;

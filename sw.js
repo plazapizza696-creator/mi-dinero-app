@@ -1,7 +1,8 @@
 const CACHE = 'midinero-v11-standalone';
-const ARCHIVOS = ['/', '/index.html', '/app.js', '/reembolsos.js', '/wallets.js', '/prestamos.js', '/actualizaciones.js', '/version.json', '/sync.js', '/styles.css', '/manifest.json', '/icon-192.png', '/icon-512.png', '/icon.svg'];
-ARCHIVOS.push(...['bbva', 'banamex', 'nu', 'spin', 'hsbc', 'plata', 'didi'].map(banco => `/assets/banks/${banco}.svg`));
-ARCHIVOS.push('/assets/banks/rappicard.png');
+const BASE = '/mi-dinero-app';
+const ARCHIVOS = ['/', '/index.html', '/app.js', '/reembolsos.js', '/wallets.js', '/prestamos.js', '/actualizaciones.js', '/version.json', '/sync.js', '/styles.css', '/manifest.json', '/icon-192.png', '/icon-512.png', '/icon.svg'].map(f => BASE + f);
+ARCHIVOS.push(...['bbva', 'banamex', 'nu', 'spin', 'hsbc', 'plata', 'didi'].map(banco => `${BASE}/assets/banks/${banco}.svg`));
+ARCHIVOS.push(BASE + '/assets/banks/rappicard.png');
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARCHIVOS)).then(() => self.skipWaiting()));
@@ -125,8 +126,15 @@ async function fetchPrices(url) {
   return { precios, errores, ts: Date.now() };
 }
 
+function apiPath(pathname) {
+  if (pathname.startsWith(BASE + '/api/')) return pathname.slice(BASE.length);
+  if (pathname.startsWith('/api/')) return pathname;
+  return null;
+}
+
 async function handleApi(request) {
-  const url = new URL(request.url), path = url.pathname;
+  const url = new URL(request.url), path = apiPath(url.pathname);
+  if (!path) return json({ error: 'No existe' }, 404);
 
   if (request.method === 'POST' && path === '/api/error') return json({ ok: true });
 
@@ -169,22 +177,25 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET' && e.request.method !== 'PUT' && e.request.method !== 'POST') return;
   if (url.origin !== location.origin) return;
 
-  // Handle API calls locally
-  if (url.pathname.startsWith('/api/')) {
+  // Handle API calls locally (both /api/... and /mi-dinero-app/api/...)
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith(BASE + '/api/')) {
     e.respondWith(handleApi(e.request));
     return;
   }
 
   // Static files: network-first with cache fallback
-  if (url.pathname === '/version.json' || url.pathname.startsWith('/signin-') || url.pathname.startsWith('/signout-') || url.pathname === '/callback') return;
+  const rel = url.pathname.startsWith(BASE) ? url.pathname.slice(BASE.length) : url.pathname;
+  if (rel === '/version.json' || rel.startsWith('/signin-') || rel.startsWith('/signout-') || rel === '/callback') return;
+  const indexKey = BASE + '/index.html';
+  const isRoot = url.pathname === BASE + '/' || url.pathname === BASE;
   e.respondWith((async () => {
     try {
       const r = await fetch(e.request, { cache: 'no-store' });
       if (r.redirected || r.status === 401 || r.status === 403) return r;
-      if (r.ok) { const c = await caches.open(CACHE); c.put(url.pathname === '/' ? '/index.html' : e.request, r.clone()); return r; }
+      if (r.ok) { const c = await caches.open(CACHE); c.put(isRoot ? indexKey : e.request, r.clone()); return r; }
       throw new Error('HTTP ' + r.status);
     } catch (err) {
-      const guardada = await caches.match(url.pathname === '/' ? '/index.html' : e.request);
+      const guardada = await caches.match(isRoot ? indexKey : e.request);
       if (guardada) return guardada;
       throw err;
     }

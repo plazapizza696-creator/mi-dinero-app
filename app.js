@@ -647,7 +647,8 @@ async function actualizarPrecios(manual = false) {
   try {
     let datos;
     if (Sync.disponible) {
-      const r = await fetch(`/api/precios?acciones=${encodeURIComponent(acc.join(','))}&cripto=${encodeURIComponent(cri.join(','))}`,
+      const _bp = location.pathname.replace(/\/[^/]*$/, '');
+      const r = await fetch(`${_bp}/api/precios?acciones=${encodeURIComponent(acc.join(','))}&cripto=${encodeURIComponent(cri.join(','))}`,
         { headers: { 'X-PIN': localStorage.getItem('midinero_pin') || '' }, cache: 'no-store' });
       if (!r.ok) throw new Error('HTTP ' + r.status);
       datos = await r.json();
