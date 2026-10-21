@@ -241,7 +241,17 @@ window.Sync = (() => {
   }
   return { init, programar, traer, refrescarVista, prepararActualizacion, get disponible() { return disponible; } };
 })();
-Sync.init();
-if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
-  navigator.serviceWorker.register(location.pathname.replace(/\/[^/]*$/, '') + '/sw.js').catch(() => {});
-}
+(async () => {
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    try {
+      await navigator.serviceWorker.register(location.pathname.replace(/\/[^/]*$/, '') + '/sw.js');
+      if (!navigator.serviceWorker.controller) {
+        await Promise.race([
+          new Promise(r => navigator.serviceWorker.addEventListener('controllerchange', r, { once: true })),
+          new Promise(r => setTimeout(r, 4000))
+        ]);
+      }
+    } catch (e) {}
+  }
+  Sync.init();
+})();

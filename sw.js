@@ -5,7 +5,13 @@ ARCHIVOS.push(...['bbva', 'banamex', 'nu', 'spin', 'hsbc', 'plata', 'didi'].map(
 ARCHIVOS.push(BASE + '/assets/banks/rappicard.png');
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARCHIVOS)).then(() => self.skipWaiting()));
+  e.waitUntil(
+    caches.open(CACHE).then(c =>
+      Promise.all(ARCHIVOS.map(url =>
+        fetch(url, { cache: 'no-store' }).then(r => { if (r.ok && !r.redirected) return c.put(url, r); }).catch(() => {})
+      ))
+    ).then(() => self.skipWaiting())
+  );
 });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
